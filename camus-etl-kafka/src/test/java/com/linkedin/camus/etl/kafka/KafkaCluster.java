@@ -1,5 +1,13 @@
 package com.linkedin.camus.etl.kafka;
 
+import kafka.server.KafkaConfig;
+import kafka.server.KafkaServer;
+import kafka.utils.Time;
+import kafka.utils.Utils;
+import org.apache.zookeeper.server.NettyServerCnxnFactory;
+import org.apache.zookeeper.server.ServerCnxnFactory;
+import org.apache.zookeeper.server.ZooKeeperServer;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -8,14 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
-
-import kafka.server.KafkaConfig;
-import kafka.server.KafkaServer;
-import kafka.utils.Time;
-import kafka.utils.Utils;
-
-import org.apache.zookeeper.server.NIOServerCnxn;
-import org.apache.zookeeper.server.ZooKeeperServer;
 
 
 public class KafkaCluster {
@@ -117,12 +117,11 @@ public class KafkaCluster {
     private final int port;
     private final File snapshotDir;
     private final File logDir;
-    private final NIOServerCnxn.Factory factory;
+    private final ServerCnxnFactory factory;
 
     /**
      * Constructs an embedded Zookeeper instance.
-     * 
-     * @param connectString Zookeeper connection string.
+     *
      * 
      * @throws IOException if an error occurs during Zookeeper initialization.
      */
@@ -130,7 +129,7 @@ public class KafkaCluster {
       this.port = getAvailablePort();
       this.snapshotDir = getTempDir();
       this.logDir = getTempDir();
-      this.factory = new NIOServerCnxn.Factory(new InetSocketAddress("localhost", port), 1024);
+      this.factory = NettyServerCnxnFactory.createFactory(new InetSocketAddress("localhost", port), 1024);
 
       try {
         int tickTime = 500;

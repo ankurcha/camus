@@ -1,28 +1,39 @@
 package com.linkedin.camus.sweeper;
 
-import java.util.List;
-import java.util.Properties;
-
+import com.linkedin.camus.sweeper.utils.DateUtils;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
-import org.easymock.EasyMock;
-import org.easymock.EasyMockSupport;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
 
-import com.linkedin.camus.sweeper.utils.DateUtils;
+import java.util.List;
+import java.util.Properties;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
+public class CamusSingleFolderSweeperPlannerTest {
 
-public class CamusSingleFolderSweeperPlannerTest extends EasyMockSupport {
+  @Mock
+  FileSystem mockedFs;
+
+  @Mock
+  FileStatus mockedFileStatus;
+
+  @Mock
+  ContentSummary mockedContentSummary;
+
   @Test
   public void testCreateSweeperJobProps() throws Exception {
-    FileSystem mockedFs = createMock(FileSystem.class);
     Path inputDir = new Path("inputDir");
     Path outputDir = new Path("outputDir");
     DateUtils dUtils = new DateUtils(new Properties());
@@ -33,26 +44,22 @@ public class CamusSingleFolderSweeperPlannerTest extends EasyMockSupport {
     Path outputDirWithHour = new Path(outputDir, hour);
 
     //inputDir should exist, but outputDir shouldn't.
-    EasyMock.expect(mockedFs.exists(inputDir)).andReturn(true).once();
-    EasyMock.expect(mockedFs.exists(outputDirWithHour)).andReturn(false).once();
+    when(mockedFs.exists(inputDir)).thenReturn(true);
+    when(mockedFs.exists(outputDirWithHour)).thenReturn(false);
 
-    FileStatus mockedFileStatus = createMock(FileStatus.class);
-    FileStatus[] fileStatuses = { mockedFileStatus };
-    EasyMock.expect(mockedFs.globStatus((Path) EasyMock.anyObject())).andReturn(fileStatuses).once();
+    FileStatus[] fileStatuses = {mockedFileStatus};
+    when(mockedFs.globStatus(any(Path.class))).thenReturn(fileStatuses);
+    when(mockedFileStatus.getPath()).thenReturn(inputDirWithHour);
 
-    EasyMock.expect(mockedFileStatus.getPath()).andReturn(inputDirWithHour).anyTimes();
-
-    ContentSummary mockedContentSummary = createMock(ContentSummary.class);
     long dataSize = 100;
-    EasyMock.expect(mockedContentSummary.getLength()).andReturn(dataSize).once();
-    EasyMock.expect(mockedFs.getContentSummary(inputDirWithHour)).andReturn(mockedContentSummary).once();
-
-    replayAll();
+    when(mockedContentSummary.getLength()).thenReturn(dataSize);
+    when(mockedFs.getContentSummary(inputDirWithHour)).thenReturn(mockedContentSummary);
 
     String topic = "testTopic";
 
     List<Properties> jobPropsList =
-        new CamusSingleFolderSweeperPlanner().setPropertiesLogger(new Properties(), Logger.getLogger("testLogger"))
+        new CamusSingleFolderSweeperPlanner().setPropertiesLogger(new Properties(),
+                                                                  Logger.getLogger("testLogger"))
             .createSweeperJobProps(topic, inputDir, outputDir, mockedFs);
 
     assertEquals(1, jobPropsList.size());
@@ -62,7 +69,9 @@ public class CamusSingleFolderSweeperPlannerTest extends EasyMockSupport {
 
     assertEquals(topic, jobProps.getProperty("topic"));
     assertEquals(topicAndHour, jobProps.getProperty(CamusSingleFolderSweeper.TOPIC_AND_HOUR));
-    assertEquals(inputDirWithHour.toString(), jobProps.getProperty(CamusSingleFolderSweeper.INPUT_PATHS));
-    assertEquals(outputDirWithHour.toString(), jobProps.getProperty(CamusSingleFolderSweeper.DEST_PATH));
+    assertEquals(inputDirWithHour.toString(),
+                 jobProps.getProperty(CamusSingleFolderSweeper.INPUT_PATHS));
+    assertEquals(outputDirWithHour.toString(),
+                 jobProps.getProperty(CamusSingleFolderSweeper.DEST_PATH));
   }
 }
